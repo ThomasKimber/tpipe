@@ -11,6 +11,7 @@ pytest = "*"
 pandas = "*"
 networkx = "*"
 lxml-html-clean = "*"
+rapidfuzz = "*"
 
 [dev-packages]
 jupyter = "*"

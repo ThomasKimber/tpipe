@@ -51,23 +51,21 @@ def walk_tree(breaking_tags : set[str],
     The result should be a reasonably authentic split out of the
     paragraphs and sections found within a web-page."""
     if elem.tag in breaking_tags and text != "" :
+        # Store XPath of the *next* tag (or parent if no next tag)
+        #next_xpath = parent_elem.getroottree().getpath(parent_elem) if len(elem) == 0 else elem[0].getroottree().getpath(elem[0])
         store.append((elem.tag, elem.getroottree().getpath(elem), text))
+        #store.append((elem.tag, next_xpath, text))
         text = ""
-    
-    if elem.tag =='title' : # Special exclusion of page title from recursive process
-        store.append((elem.tag, elem.getroottree().getpath(elem), elem.text.strip()))
-        text = ""
-        return text, store
 
-    for e in elem:
+    for i,e in enumerate(elem):
         if e.tag not in ignore_html_tags:
-            text, store = walk_tree(breaking_tags, ignore_html_tags, e, elem, text, depth+1, store)
+            if e.text is not None:
+                text = " ".join([text, e.text.strip() ]).strip()
+            if e.tail is not None:
+                text = " ".join([text, e.tail.strip()]).strip()
             d = "    " * depth
-            if e.tag != 'title': # Special exclusion of page title from recursive process
-                if e.text is not None:
-                    text = " ".join([text, e.text.strip() ]).strip()
-                if e.tail is not None:
-                    text = " ".join([text, e.tail.strip()]).strip()
+            text, store = walk_tree(breaking_tags, ignore_html_tags, e, elem, text, depth+1, store)
+            
     return text, store
 
 
