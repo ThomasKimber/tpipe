@@ -6,7 +6,6 @@ name = "pypi"
 [packages]
 spacy = "*"
 lxml = "*"
-gravis = "*"
 pytest = "*"
 pandas = "*"
 networkx = "*"

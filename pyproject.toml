@@ -1,0 +1,12 @@
+[project]
+name = "tpipe"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "lxml>=6.1.1",
+    "networkx>=3.6.1",
+    "pandas>=3.0.3",
+    "tqdm>=4.68.3",
+]

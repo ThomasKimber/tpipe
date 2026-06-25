@@ -1,0 +1,1 @@
+uv run --active --with jupyter jupyter notebook
