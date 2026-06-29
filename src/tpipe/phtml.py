@@ -6,6 +6,8 @@ from typing import Optional, Literal, Callable, Iterator
 import itertools
 import networkx as nx
 from html import escape
+from copy import deepcopy
+
 
 NodeType = Literal["element", "text", "comment"]
 TextSlot = Literal["text", "tail"]
@@ -142,6 +144,37 @@ def get_node_data(G, node_id):
     node = G.nodes[node_id]
     return node.get("data", node)
 
+# Normalisation Builder helper functions:
+# ============================================================
+def root_node_id(G) -> str:
+    for node_id in G.nodes:
+        if G.in_degree(node_id) == 0:
+            return node_id
+    raise ValueError("Graph has no root node")
+
+def clone_node_data_with_sources(data: NodeData, extra_sources: Optional[list[SourceRef]] = None) -> NodeData:
+    cloned = deepcopy(data)
+    if extra_sources:
+        existing = {(ref.xpath, ref.tag) for ref in cloned.source_refs}
+        for ref in extra_sources:
+            key = (ref.xpath, ref.tag)
+            if key not in existing:
+                cloned.source_refs.append(ref)
+                existing.add(key)
+    return cloned
+
+def add_ordered_children(out: nx.MultiDiGraph, parent_id: str, child_ids: list[str]) -> None:
+    for idx, child_id in enumerate(child_ids):
+        out.add_edge(parent_id, child_id, key=f"contains:{idx}", kind="contains", order=idx)
+    for left, right in zip(child_ids, child_ids[1:]):
+        out.add_edge(left, right, key="next", kind="next")
+
+def new_like_node_id(node_id: str, counters: dict[str, int]) -> str:
+    prefix = node_id[:1] if node_id else "n"
+    counters[prefix] = counters.get(prefix, 0) + 1
+    return f"{prefix}n{counters[prefix]}"
+# ============================================================
+
 
 def serialize_attrs(attrs: dict) -> str:
     if not attrs:
@@ -188,3 +221,121 @@ def _serialize_html_node(G, node_id, parent_tag=None) -> str:
         inner.append(_serialize_html_node(G, child_id, parent_tag=tag))
 
     return f"<{tag}{attrs}>{''.join(inner)}</{tag}>"
+
+
+NORMALISATION_RULES = {
+    "PRUNE" : { "script", "style", "noscript", "nav", },
+    "UNWRAP" : { "b", "i", "span", "font" }
+}
+
+# Rewrite Functions
+# =====================================================================
+def default_mutate(
+    G_in: nx.MultiDiGraph,
+    G_out: nx.MultiDiGraph,
+    node_id: str,
+    rewritten_children: list[str],
+    counters: dict[str, int],
+    rules: dict
+) -> list[str]:
+    data = get_node_data(G_in, node_id)
+
+    if data.node_type == "comment":
+        return []
+
+    if data.node_type == "text":
+        text = data.text or ""
+        if not text.strip():
+            return []
+        new_id = new_like_node_id(node_id, counters)
+        G_out.add_node(new_id, data=clone_node_data_with_sources(data))
+        return [new_id]
+
+    if data.node_type != "element":
+        return []
+
+    tag = (data.tag or "").lower()
+
+    if tag in rules.get("PRUNE", set()):
+        return []
+
+    if tag in rules.get("UNWRAP", set()):
+        source_refs = data.source_refs
+        for child_id in rewritten_children:
+            child_data = get_node_data(G_out, child_id)
+            child_data.source_refs = clone_node_data_with_sources(
+                child_data,
+                extra_sources=source_refs
+            ).source_refs
+        return rewritten_children
+
+    new_id = new_like_node_id(node_id, counters)
+    new_data = clone_node_data_with_sources(data)
+    G_out.add_node(new_id, data=new_data)
+    add_ordered_children(G_out, new_id, rewritten_children)
+    return [new_id]
+
+
+def rewrite_subtree(
+    G_in: nx.MultiDiGraph,
+    G_out: nx.MultiDiGraph,
+    node_id: str,
+    mutate: Callable,
+    counters: dict[str, int],
+    rules: dict
+) -> list[str]:
+    rewritten_children = []
+    for child_id in ordered_children(G_in, node_id):
+        rewritten_children.extend(
+            rewrite_subtree(G_in, G_out, child_id, mutate, counters, rules)
+        )
+    return mutate(G_in, G_out, node_id, rewritten_children, counters, rules)
+# =========================================================================
+
+def normalise_graph(
+    G_in: nx.MultiDiGraph,
+    rules: Optional[dict] = None,
+    mutate: Optional[Callable] = None
+) -> nx.MultiDiGraph:
+    rules = rules or NORMALISATION_RULES
+    mutate = mutate or default_mutate
+
+    G_out = nx.MultiDiGraph()
+    G_out.graph.update(deepcopy(G_in.graph))
+
+    counters: dict[str, int] = {}
+    old_root = root_node_id(G_in)
+    new_roots = rewrite_subtree(G_in, G_out, old_root, mutate, counters, rules)
+
+    if not new_roots:
+        synthetic_root = "en1"
+        G_out.add_node(
+            synthetic_root,
+            data=NodeData(
+                node_type="element",
+                tag="div",
+                attrs={},
+                source_refs=[]
+            )
+        )
+        G_out.graph["root"] = synthetic_root
+        return G_out
+
+    if len(new_roots) == 1:
+        G_out.graph["root"] = new_roots[0]
+        return G_out
+
+    synthetic_root = "en1"
+    G_out.add_node(
+        synthetic_root,
+        data=NodeData(
+            node_type="element",
+            tag="div",
+            attrs={},
+            source_refs=[]
+        )
+    )
+    add_ordered_children(G_out, synthetic_root, new_roots)
+    G_out.graph["root"] = synthetic_root
+    return G_out
+

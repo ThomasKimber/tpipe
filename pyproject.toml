@@ -9,4 +9,5 @@ dependencies = [
     "networkx>=3.6.1",
     "pandas>=3.0.3",
     "tqdm>=4.68.3",
+    "trafilatura>=2.1.0",
 ]
