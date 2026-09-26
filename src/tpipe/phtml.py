@@ -115,7 +115,7 @@ class GraphBuilder:
 def parse_html_root(source: str,
                     preserve_fragments: Optional[bool]) -> HtmlElement:
     if preserve_fragments:
-        document = lhtml.fragments_fromstring(source)    
+        document = lhtml.fragment_fromstring(source)    
     else:
         document = lhtml.fromstring(source)
     return document.getroottree().getroot()
