@@ -112,12 +112,17 @@ class GraphBuilder:
 
         return parent_id
     
-def parse_html_root(source: str) -> HtmlElement:
-    document = lhtml.fromstring(source)
+def parse_html_root(source: str,
+                    preserve_fragments: Optional[bool]) -> HtmlElement:
+    if preserve_fragments:
+        document = lhtml.fragments_fromstring(source)    
+    else:
+        document = lhtml.fromstring(source)
     return document.getroottree().getroot()
 
-def html_to_graph(source: str) -> nx.MultiDiGraph:
-    root = parse_html_root(source)
+def html_to_graph(source: str, 
+                  preserve_fragments: Optional[bool]) -> nx.MultiDiGraph:
+    root = parse_html_root(source, preserve_fragments)
     builder = GraphBuilder()
     builder.build_subtree(root)
     rebuild_next_edges(builder.graph)
