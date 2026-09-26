@@ -189,6 +189,7 @@ def serialize_attributes(attributes: dict) -> str:
         parts.append(f' {key}="{escape(str(value), quote=True)}"')
     return "".join(parts)
 
+# TAGS that are optionally self-closing
 VOID_TAGS = {
     "area", "base", "br", "col", "embed", "hr", "img",
     "input", "link", "meta", "param", "source", "track", "wbr",
@@ -227,7 +228,7 @@ def _serialize_html_node(G, node_id, parent_tag=None) -> str:
 
 
 NORMALISATION_RULES = {
-    "PRUNE" : { "script", "style", "noscript", "nav", },
+    "PRUNE" : { "script", "style", "noscript", "nav", "aside", "footer"},
     "UNWRAP" : { "b", "i", "span", "font" }
 }
 
