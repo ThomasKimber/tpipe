@@ -95,7 +95,7 @@ class GraphBuilder:
         parent_id = self.add_element_node(el)
         ordered_children = []
 
-        if el.text is not None:
+        if el.text is not None and el.tag != "br":
             text_id = self.add_text_node(el.text, "text", el)
             ordered_children.append(text_id)
 
@@ -123,6 +123,13 @@ def html_to_graph(source: str) -> nx.MultiDiGraph:
     builder.build_subtree(root)
     rebuild_next_edges(builder.graph)
     return builder.graph
+
+def get_parent_node_id(G, node_id):
+    parents = set([s for s,f,k,d in G.in_edges(node_id, keys=True, data=True) if d.get("kind")=='contains'])
+    if len(parents)==1:
+        return parents.pop()
+    else:
+        return None
 
 
 def get_ordered_children(G, parent_id):
