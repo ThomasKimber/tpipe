@@ -95,7 +95,7 @@ class GraphBuilder:
         parent_id = self.add_element_node(el)
         ordered_children = []
 
-        if el.text is not None and el.tag != "br":
+        if el.text is not None: # and el.tag != "br":
             text_id = self.add_text_node(el.text, "text", el)
             ordered_children.append(text_id)
 
