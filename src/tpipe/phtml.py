@@ -131,7 +131,14 @@ def get_parent_node_id(G, node_id):
     else:
         return None
 
-
+def get_ancestors(G, node_id):
+    ancestors=set()
+    parent=get_parent_node_id(G, node_id)
+    while parent is not None:        
+        ancestors.add(parent)
+        parent=get_parent_node_id(G, parent)
+    return ancestors
+        
 def get_ordered_children(G, parent_id):
     children = []
     for _, child_id, _, data in G.out_edges(parent_id, keys=True, data=True):
