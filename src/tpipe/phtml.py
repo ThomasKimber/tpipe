@@ -112,7 +112,10 @@ class GraphBuilder:
 
         return parent_id
     
-def parse_html_root(source: str) -> HtmlElement:
+def parse_html_root(source: str) -> HtmlElement | None:
+    if not source or not source.strip():
+        return None  # Or return a default empty element
+    
     document = lhtml.fromstring(source)
     return document.getroottree().getroot()
     
@@ -120,6 +123,8 @@ def parse_html_root(source: str) -> HtmlElement:
 def html_to_graph(source: str) -> nx.MultiDiGraph:
     root = parse_html_root(source)
     builder = GraphBuilder()
+    if root is None:
+        return builder.graph
     builder.build_subtree(root)
     rebuild_next_edges(builder.graph)
     return builder.graph
